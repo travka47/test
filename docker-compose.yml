@@ -1,0 +1,42 @@
+services:
+  web:
+    build:
+      context: .
+    ports:
+      - "80:8000"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+        restart: true
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+
+  mariadb:
+    image: mariadb:12.0.2
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: "password"
+      MARIADB_DATABASE: "database"
+      MARIADB_USER: "user"
+      MARIADB_PASSWORD: "password"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      timeout: 5s
+      interval: 10s
+      retries: 3
+
+volumes:
+  mariadb-data:
+
+networks:
+  app-network:
+    driver: bridge
