@@ -42,6 +42,8 @@ async def get_async_session() -> AsyncGenerator[AsyncSession | Any, Any]:
 
 @asynccontextmanager
 async def initiate_database(app: FastAPI):
+    import app.statistical_records.model  # noqa: F401
+
     try:
         async with engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)

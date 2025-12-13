@@ -17,6 +17,7 @@ services:
     image: mariadb:12.0.2
     ports:
       - "3306:3306"
+    command: --local-infile=1
     environment:
       MARIADB_ROOT_PASSWORD: "password"
       MARIADB_DATABASE: "database"
