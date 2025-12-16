@@ -1,6 +1,7 @@
 import datetime
+from decimal import Decimal
 
-from sqlalchemy import Date, Integer, UniqueConstraint
+from sqlalchemy import Date, Integer, UniqueConstraint, DECIMAL
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -15,4 +16,4 @@ class StatisticalRecord(Base):
     respondent: Mapped[int] = mapped_column(Integer, nullable=False)
     sex: Mapped[int] = mapped_column(Integer, nullable=False)
     age: Mapped[int] = mapped_column(Integer, nullable=False)
-    weight: Mapped[int] = mapped_column(Integer, nullable=False)
+    weight: Mapped[Decimal] = mapped_column(DECIMAL(26, 18), nullable=False)

@@ -1,7 +1,9 @@
+from decimal import Decimal
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions.errors import InvalidSQLError, EmptyAudienceError
+from app.exceptions.errors import InvalidSQLError, EmptyAudienceError, EmptyListError
 
 
 class StatisticalRecordService:
@@ -10,28 +12,46 @@ class StatisticalRecordService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_respondents_with_average_weight(
-        self, audience: str
-    ) -> dict[int, float]:
+    async def get_sum_of_respondents_average_weights(
+        self, audiences: list[str]
+    ) -> Decimal:
         """
-        Получает респондентов со средним весом каждого для заданной выборки
+        Получает сумму средних весов респондентов для заданной выборки
 
-        :param audience: SQL-условие для фильтрации аудитории
-        :return: Словарь {respondent: average_weight}
+        :param audiences: список SQL-условий для фильтрации аудитории (применяются все условия)
+        :return: Сумма средних весов респондентов
+        :raises EmptyListError: Если список audiences пустой
         :raises InvalidSQLError: Если SQL-запрос некорректен
         """
+        if not audiences:
+            raise EmptyListError()
+        if len(audiences) == 1:
+            condition = audiences[0]
+        else:
+            condition = " AND ".join([f"({audience})" for audience in audiences])
+
         statement = text(
-            f"SELECT respondent, AVG(weight) as average_weight FROM statistical_records WHERE {audience} GROUP BY respondent"
+            f"""
+            WITH respondents_average_weights AS (
+                SELECT AVG(weight) as average_weight
+                FROM statistical_records
+                WHERE {condition}
+                GROUP BY respondent
+            )
+            SELECT SUM(average_weight)
+            FROM respondents_average_weights
+            """
         )
 
         try:
             result = await self.session.execute(statement)
+            total = result.scalar_one_or_none()
         except Exception as e:
             raise InvalidSQLError(original_exception=e)
 
-        return {row.respondent: row.average_weight for row in result.mappings().all()}
+        return total if total else Decimal(0)
 
-    async def get_percent_of_occurrences(self, audience1: str, audience2: str) -> float:
+    async def get_percent_of_occurrences(self, audience1: str, audience2: str) -> Decimal:
         """
         Вычисляет процент вхождения второй аудитории в первую
 
@@ -41,25 +61,17 @@ class StatisticalRecordService:
         :raises InvalidSQLError: Если SQL-запрос некорректен
         :raises EmptyAudienceError: Если в первой выборке нет респондентов
         """
-        respondents1 = await self.get_respondents_with_average_weight(
-            audience=audience1
-        )
-        respondents2 = await self.get_respondents_with_average_weight(
-            audience=audience2
+        sum_respondents1 = await self.get_sum_of_respondents_average_weights(
+            audiences=[audience1]
         )
 
-        common_respondents_keys = set(respondents1.keys()) & set(respondents2.keys())
-
-        average_weight_for_common_respondents = sum(
-            respondents1[key] for key in common_respondents_keys
+        sum_common = await self.get_sum_of_respondents_average_weights(
+            audiences=[audience1, audience2]
         )
-        average_weight_for_respondents1 = sum(respondents1.values())
 
-        if average_weight_for_respondents1 == 0:
+        if sum_respondents1 == 0:
             raise EmptyAudienceError()
 
-        percent = (
-            average_weight_for_common_respondents / average_weight_for_respondents1
-        )
+        percent = sum_common / sum_respondents1
 
         return percent

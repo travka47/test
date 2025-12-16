@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS statistical_records (
   respondent INT NOT NULL,
   sex INT NOT NULL,
   age INT NOT NULL,
-  weight INT NOT NULL,
+  weight DECIMAL(26, 18) NOT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY date_respondent (date, respondent),
   KEY ix_statistical_records_id (id)

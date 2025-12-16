@@ -6,3 +6,7 @@ class InvalidSQLError(Exception):
 
 class EmptyAudienceError(Exception):
     pass
+
+
+class EmptyListError(Exception):
+    pass
